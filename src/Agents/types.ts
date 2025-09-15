@@ -16,10 +16,9 @@ export type BalancePayload = {
   token: supportedTokens;
 };
 
-// Dynamic workflow types that work with the tool registry
 export type WorkflowStep = {
-  action: string; // Tool name from registry
-  payload: Record<string, unknown>; // Flexible payload
+  action: string; 
+  payload: Record<string, unknown>; 
 };
 
 export type WorkflowPlan = {

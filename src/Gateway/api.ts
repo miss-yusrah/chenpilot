@@ -4,6 +4,7 @@ import cors from "cors";
 import { authenticate } from "../Auth/auth";
 import { validateQuery } from "../Agents/validationService";
 import { intentAgent } from "../Agents/agents/intentagent";
+import { memoryStore } from "../Agents/memory/memory";
 const app = express();
 
 app.use(cors());
@@ -13,9 +14,10 @@ app.post("/query", async (req, res) => {
   const { userId, query } = req.body;
 
   const user = await authenticate(userId);
+
   if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-  const valid = await validateQuery(query);
+  const valid = await validateQuery(query, userId);
   if (!valid) return res.status(400).json({ error: "Invalid query" });
 
   // 3. intent → execution

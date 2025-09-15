@@ -3,7 +3,7 @@ import { toolRegistry } from "./ToolRegistry";
 
 export class PromptGenerator {
   /**
-   * Generate dynamic intent prompt based on registered tools
+   * intent prompt
    */
   generateIntentPrompt(): string {
     const tools = toolRegistry.getToolMetadata();
@@ -54,7 +54,7 @@ Respond with valid JSON only.
   }
 
   /**
-   * Generate dynamic validation prompt based on registered tools
+   * validation prompt
    */
   generateValidationPrompt(): string {
     const tools = toolRegistry.getToolMetadata();
@@ -76,15 +76,14 @@ Check if the user query is about supported crypto operations:
 
 ${categoryDescriptions}
 
+
 Respond ONLY with:
 "1" if valid
 "0" if invalid
-`;
+DO NOT GENERATE COMMENTS, INSTRUCTIONS, ADDITIONAL EXPLANATIONS, JUST 0 OR 1
+here is the system "{{CONTEXT}}" to help make a decision`;
   }
 
-  /**
-   * Generate tool-specific examples for the LLM
-   */
   generateToolExamples(toolName: string): string[] {
     const tool = toolRegistry.getTool(toolName);
     return tool?.metadata.examples || [];
@@ -109,7 +108,6 @@ Respond ONLY with:
       })
       .join("\n\n");
   }
-
   /**
    * Generate action descriptions for the LLM
    */
@@ -119,7 +117,7 @@ Respond ONLY with:
         const params = Object.entries(tool.parameters)
           .map(([paramName, paramDef]) => {
             const required = paramDef.required ? "*" : "";
-          
+
             const type = paramDef.enum
               ? paramDef.enum.map((v: string) => `"${v}"`).join(" | ")
               : paramDef.type;
@@ -218,3 +216,4 @@ ${metadata.examples.map((example) => `  - ${example}`).join("\n")}
 }
 
 export const promptGenerator = new PromptGenerator();
+

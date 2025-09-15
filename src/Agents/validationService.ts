@@ -1,18 +1,28 @@
 import { agentLLM } from "./agent";
+import { memoryStore } from "./memory/memory";
 import { promptGenerator } from "./registry/PromptGenerator";
 import { toolAutoDiscovery } from "./registry/ToolAutoDiscovery";
 
 let initialized = false;
 
-export async function validateQuery(query: string): Promise<boolean> {
-  // Ensure tool registry is initialized
+export async function validateQuery(
+  query: string,
+  userId: string
+): Promise<boolean> {
   if (!initialized) {
     await toolAutoDiscovery.initialize();
     initialized = true;
   }
 
-  // Generate dynamic validation prompt based on registered tools
-  const validationPrompt = promptGenerator.generateValidationPrompt();
-  const result = await agentLLM.callLLM(validationPrompt, query, false);
+  let validationPrompt = promptGenerator.generateValidationPrompt();
+  const context = memoryStore.get(userId);
+
+  validationPrompt = validationPrompt.replace(
+    "{{CONTEXT}}",
+    JSON.stringify(context)
+  );
+
+  const result = await agentLLM.callLLM(userId, validationPrompt, query, false);
+
   return result.trim() === "1";
 }

@@ -4,18 +4,18 @@ import { agentLLM } from "../agent";
 import { promptGenerator } from "../registry/PromptGenerator";
 import { toolAutoDiscovery } from "../registry/ToolAutoDiscovery";
 import { WorkflowPlan, WorkflowStep } from "../types";
+import { memoryStore } from "../memory/memory";
 
 export class IntentAgent {
   private initialized = false;
 
   async handle(input: string, userId: string) {
-    // Ensure tool registry is initialized
     if (!this.initialized) {
       await toolAutoDiscovery.initialize();
       this.initialized = true;
     }
 
-    const isValid = await validateQuery(input);
+    const isValid = await validateQuery(input, userId);
     if (!isValid) {
       return { success: false, error: "Invalid request format" };
     }
@@ -38,12 +38,11 @@ export class IntentAgent {
         .replace("{{USER_INPUT}}", input)
         .replace("{{USER_ID}}", userId);
 
-      const parsed = await agentLLM.callLLM(prompt, "", true);
-      console.log(prompt)
+      const parsed = await agentLLM.callLLM(userId, prompt, "", true);
       const steps: WorkflowStep[] = Array.isArray(parsed?.workflow)
         ? parsed.workflow
         : [];
-
+      memoryStore.add(userId, `User: ${input}`);
       return { workflow: steps };
     } catch (err) {
       console.error("LLM workflow parsing failed:", err);

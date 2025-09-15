@@ -215,3 +215,4 @@ The new system is backward compatible. Existing tools can be gradually migrated:
 4. Register tools with the registry
 
 The old hardcoded system will continue to work during migration.
+

@@ -133,11 +133,12 @@ export class WalletTool extends BaseTool {
         ETH: ETHTokenAddress,
       };
       const contractAddress = tokensMap[payload.token];
+      if(!contractAddress)throw new Error('invalid token ')
       const contract = new Contract(tokenAbi, contractAddress, acct);
       const balance = await contract.balanceOf(
         accountData.precalculatedAddress
       );
-      console.log(balance.balance.toString());
+  
 
       return this.createSuccessResult("wallet_balance", {
         balance: `${(Number(balance.balance.toString()) / 10 ** 18).toFixed(
