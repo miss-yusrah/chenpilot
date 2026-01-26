@@ -1,4 +1,5 @@
-require("dotenv").config();
+import dotenv from "dotenv";
+dotenv.config();
 
 export default {
   env: process.env.NODE_ENV || "development",
@@ -7,9 +8,12 @@ export default {
   node_url: process.env.NODE_URL!,
   encryptionKey: process.env.ENCRYPTION_KEY!,
   stellar: {
-    horizonUrl: process.env.STELLAR_HORIZON_URL || 'https://horizon-testnet.stellar.org',
-    networkPassphrase: process.env.STELLAR_NETWORK_PASSPHRASE || 'Test SDF Network ; September 2015',
-    network: process.env.STELLAR_NETWORK || 'TESTNET',
+    horizonUrl:
+      process.env.STELLAR_HORIZON_URL || "https://horizon-testnet.stellar.org",
+    networkPassphrase:
+      process.env.STELLAR_NETWORK_PASSPHRASE ||
+      "Test SDF Network ; September 2015",
+    network: process.env.STELLAR_NETWORK || "TESTNET",
   },
   db: {
     postgres: {
@@ -21,4 +25,3 @@ export default {
     },
   },
 };
-                                                                                                                                                          

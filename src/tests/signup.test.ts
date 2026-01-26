@@ -81,7 +81,7 @@ describe("POST /signup", () => {
   });
 
   it("should store encrypted private key in database", async () => {
-    const response = await request(app)
+    await request(app)
       .post("/signup")
       .send({ name: "encryptiontest" })
       .expect(201);
