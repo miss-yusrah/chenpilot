@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 type StellarNetwork = "testnet" | "public";
+//console.log(process.env.DB_PASSWORD,  process.env.DB_NAME)
 
 // Stellar network configurations
 const STELLAR_NETWORKS: Record<
