@@ -12,12 +12,8 @@ import { authenticate } from "../Auth/auth";
 import UserService from "../Auth/user.service";
 import { validateQuery } from "../Agents/validationService";
 import { intentAgent } from "../Agents/agents/intentagent";
-import {
-  ErrorHandler,
-  UnauthorizedError,
-  ValidationError,
-  BadError,
-} from "../utils/error";
+import { ErrorHandler } from "./middleware/errorHandler";
+import { UnauthorizedError, ValidationError, BadError } from "../utils/error";
 
 const app = express();
 
