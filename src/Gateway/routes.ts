@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
-import { rateLimit } from 'express-rate-limit';
-import helmet from 'helmet';
+import { rateLimit } from "express-rate-limit";
+import helmet from "helmet";
 import AppDataSource from "../config/Datasource";
 import { User } from "../Auth/user.entity";
 import { stellarWebhookService } from "./webhook.service";
@@ -21,7 +21,7 @@ router.use(helmet());
 const generalLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
   limit: 100,
-  standardHeaders: 'draft-8',
+  standardHeaders: "draft-8",
   legacyHeaders: false,
   message: { success: false, message: "Too many requests. Please slow down." },
 });
@@ -31,7 +31,59 @@ router.use(generalLimiter);
 
 // --- ROUTES ---
 
-// Public webhook endpoint for Stellar funding notifications
+/**
+ * @swagger
+ * /api/webhook/stellar/funding:
+ *   post:
+ *     summary: Process a Stellar funding webhook
+ *     description: Receives and validates funding notifications from Stellar Horizon. Verifies HMAC-SHA256 signature, checks idempotency, updates user funding status, and triggers auto-deployment.
+ *     tags: [Webhooks]
+ *     parameters:
+ *       - in: header
+ *         name: x-stellar-signature
+ *         schema:
+ *           type: string
+ *         description: HMAC-SHA256 signature for payload verification
+ *       - in: header
+ *         name: x-stellar-timestamp
+ *         schema:
+ *           type: string
+ *         description: Timestamp for replay-attack prevention
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/WebhookPayload'
+ *     responses:
+ *       200:
+ *         description: Webhook processed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 userId:
+ *                   type: string
+ *                 deploymentTriggered:
+ *                   type: boolean
+ *       400:
+ *         description: Invalid payload or signature
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 router.post("/webhook/stellar/funding", async (req: Request, res: Response) => {
   try {
     const result = await stellarWebhookService.processFundingWebhook(req);
@@ -58,6 +110,65 @@ router.post("/webhook/stellar/funding", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/signup:
+ *   post:
+ *     summary: Register a new user with wallet details
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - address
+ *               - pk
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Unique username
+ *               address:
+ *                 type: string
+ *                 description: Stellar public address
+ *               pk:
+ *                 type: string
+ *                 description: Private key
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 userId:
+ *                   type: string
+ *                   format: uuid
+ *       400:
+ *         description: Missing required fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: User with this name already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 router.post("/signup", async (req: Request, res: Response) => {
   try {
     const { name, address, pk } = req.body;
@@ -109,7 +220,95 @@ router.post("/signup", async (req: Request, res: Response) => {
   }
 });
 
-// GET /account/:userId/transactions - Get paginated Stellar transaction history
+/**
+ * @swagger
+ * /api/account/{userId}/transactions:
+ *   get:
+ *     summary: Get paginated Stellar transaction history
+ *     tags: [Transactions]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID of the user
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [funding, deployment, swap, transfer, all]
+ *         description: Filter by transaction type
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Start date filter (ISO 8601)
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: End date filter (ISO 8601)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Number of transactions per page
+ *       - in: query
+ *         name: cursor
+ *         schema:
+ *           type: string
+ *         description: Pagination cursor from previous response
+ *     responses:
+ *       200:
+ *         description: Paginated transaction list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 transactions:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/TransactionHistoryItem'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     nextCursor:
+ *                       type: string
+ *                     prevCursor:
+ *                       type: string
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *       400:
+ *         description: Invalid query parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 router.get(
   "/account/:userId/transactions",
   async (req: Request, res: Response) => {
@@ -177,7 +376,7 @@ router.get(
       // Fetch transaction history
       const result = await transactionHistoryService.getTransactionHistory(
         userId,
-        queryParams,
+        queryParams
       );
 
       return res.status(200).json({
@@ -195,7 +394,7 @@ router.get(
         message,
       });
     }
-  },
+  }
 );
 
 export default router;
