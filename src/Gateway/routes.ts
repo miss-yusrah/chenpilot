@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
+import * as os from "os";
 import AppDataSource from "../config/Datasource";
 import { User } from "../Auth/user.entity";
 import { stellarWebhookService } from "./webhook.service";
@@ -417,5 +418,36 @@ router.get(
     }
   })
 );
+
+// GET /admin/stats - Internal admin route for CPU and memory usage
+router.get("/admin/stats", (req: Request, res: Response) => {
+  const memUsage = process.memoryUsage();
+  const cpuUsage = process.cpuUsage();
+
+  res.json({
+    success: true,
+    timestamp: new Date().toISOString(),
+    memory: {
+      rss: `${(memUsage.rss / 1024 / 1024).toFixed(2)} MB`,
+      heapTotal: `${(memUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`,
+      heapUsed: `${(memUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`,
+      external: `${(memUsage.external / 1024 / 1024).toFixed(2)} MB`,
+    },
+    cpu: {
+      user: `${(cpuUsage.user / 1000).toFixed(2)} ms`,
+      system: `${(cpuUsage.system / 1000).toFixed(2)} ms`,
+    },
+    system: {
+      totalMemory: `${(os.totalmem() / 1024 / 1024 / 1024).toFixed(2)} GB`,
+      freeMemory: `${(os.freemem() / 1024 / 1024 / 1024).toFixed(2)} GB`,
+      uptime: `${(os.uptime() / 3600).toFixed(2)} hours`,
+      loadAverage: os.loadavg(),
+    },
+    process: {
+      uptime: `${(process.uptime() / 60).toFixed(2)} minutes`,
+      pid: process.pid,
+    },
+  });
+});
 
 export default router;
