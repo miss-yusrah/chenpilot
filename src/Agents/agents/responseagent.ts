@@ -3,16 +3,14 @@ import { agentLLM } from "../agent";
 import { promptGenerator } from "../registry/PromptGenerator";
 
 class ResponseAgent {
-  async format(workflow: ToolResult[], userId: string, userInput: string) {
-    const startTime = Date.now();
-    let promptVersionId: string | undefined;
+  async format(workflow: ToolResult[], userId: string, userInput: string, traceId: string) {
+    const responsePrompt = promptGenerator.generateResponsePrompt();
 
     try {
       const promptVersion = await promptGenerator.generateResponsePrompt();
       promptVersionId = (promptVersion as any).id;
 
-      const responsePrompt =
-        typeof promptVersion === "string" ? promptVersion : promptVersion;
+    const response = await agentLLM.callLLM(userId, prompt, userInput, true, traceId);
 
       const prompt = responsePrompt
         .replace("{{WORKFLOW_RESULTS}}", JSON.stringify(workflow, null, 2))

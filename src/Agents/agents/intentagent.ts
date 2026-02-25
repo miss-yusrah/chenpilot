@@ -7,11 +7,15 @@ import { WorkflowPlan, WorkflowStep } from "../types";
 import { memoryStore } from "../memory/memory";
 import { parseSorobanIntent } from "../planner/sorobanIntent";
 import logger from "../../config/logger";
+import { randomUUID } from "crypto";
 
 export class IntentAgent {
   private initialized = false;
 
   async handle(input: string, userId: string) {
+    const traceId = randomUUID();
+    logger.info("Intent agent started", { traceId, userId, input });
+
     if (!this.initialized) {
       await toolAutoDiscovery.initialize();
       this.initialized = true;
@@ -19,20 +23,23 @@ export class IntentAgent {
 
     const isValid = await validateQuery(input, userId);
     if (!isValid) {
+      logger.warn("Invalid request format", { traceId, userId });
       return { success: false, error: "Invalid request format" };
     }
 
-    const workflow = await this.planWorkflow(input, userId);
-    logger.info("Workflow planned", { workflow, userId });
+    const workflow = await this.planWorkflow(input, userId, traceId);
+    logger.info("Workflow planned", { traceId, workflow, userId });
     if (!workflow.workflow.length) {
+      logger.warn("Empty workflow", { traceId, userId });
       return { success: false, error: "Could not determine workflow" };
     }
-    return executionAgent.run(workflow, userId, input);
+    return executionAgent.run(workflow, userId, input, traceId);
   }
 
   private async planWorkflow(
     input: string,
-    userId: string
+    userId: string,
+    traceId: string
   ): Promise<WorkflowPlan> {
     const startTime = Date.now();
     let promptVersionId: string | undefined;
@@ -40,6 +47,7 @@ export class IntentAgent {
     try {
       const sorobanWorkflow = parseSorobanIntent(input);
       if (sorobanWorkflow) {
+        logger.info("Soroban workflow detected", { traceId, userId });
         memoryStore.add(userId, `User: ${input}`);
         return sorobanWorkflow;
       }
@@ -54,7 +62,7 @@ export class IntentAgent {
         .replace("{{USER_INPUT}}", input)
         .replace("{{USER_ID}}", userId);
 
-      const parsed = await agentLLM.callLLM(userId, prompt, "", true);
+      const parsed = await agentLLM.callLLM(userId, prompt, "", true, traceId);
       const steps: WorkflowStep[] = Array.isArray(parsed?.workflow)
         ? parsed.workflow
         : [];
@@ -74,18 +82,7 @@ export class IntentAgent {
       memoryStore.add(userId, `User: ${input}`);
       return { workflow: steps };
     } catch (err) {
-      if (promptVersionId) {
-        const { promptVersionService } = await import(
-          "../registry/PromptVersionService"
-        );
-        await promptVersionService.trackMetric(
-          promptVersionId,
-          false,
-          userId,
-          Date.now() - startTime
-        );
-      }
-      logger.error("LLM workflow parsing failed", { error: err, userId });
+      logger.error("LLM workflow parsing failed", { traceId, error: err, userId });
       return { workflow: [] };
     }
   }

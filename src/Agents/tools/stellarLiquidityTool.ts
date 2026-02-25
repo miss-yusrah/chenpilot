@@ -64,7 +64,7 @@ function validateInput(input: StellarLiquidityInput) {
 //
 
 async function fetchOrderBook(
-  input: StellarLiquidityInput,
+  input: StellarLiquidityInput
 ): Promise<HorizonOrderBookResponse> {
   const server = new Horizon.Server(config.stellar.horizonUrl);
 
@@ -89,7 +89,7 @@ async function fetchOrderBook(
 
 function computeLiquidityMetrics(
   data: HorizonOrderBookResponse,
-  input: StellarLiquidityInput,
+  input: StellarLiquidityInput
 ): LiquidityMetrics | LiquidityError {
   if (!data.bids.length || !data.asks.length) {
     return { error: "No liquidity available for this pair." };
@@ -108,12 +108,12 @@ function computeLiquidityMetrics(
 
   const totalBidVolume = bids.reduce(
     (sum, bid) => sum + parseFloat(bid.amount),
-    0,
+    0
   );
 
   const totalAskVolume = asks.reduce(
     (sum, ask) => sum + parseFloat(ask.amount),
-    0,
+    0
   );
 
   return {
@@ -152,7 +152,7 @@ export const stellarLiquidityTool = {
   },
 
   async execute(
-    input: StellarLiquidityInput,
+    input: StellarLiquidityInput
   ): Promise<LiquidityMetrics | LiquidityError> {
     try {
       validateInput(input);
