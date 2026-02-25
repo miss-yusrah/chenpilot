@@ -13,13 +13,15 @@ import {
 import logger from "../config/logger";
 import authRoutes from "../Auth/auth.routes";
 import dataExportRoutes from "../services/dataExport.routes";
+import auditLogRoutes from "../AuditLog/auditLog.routes";
 import { stellarLiquidityTool } from "../Agents/tools/stellarLiquidityTool";
 import { authenticateToken } from "../Auth/auth.middleware";
 import {
   requireAdmin,
-  requireModerator,
   requireOwnerOrElevated,
 } from "./middleware/rbac.middleware";
+import { auditLogService } from "../AuditLog/auditLog.service";
+import { AuditAction, AuditSeverity } from "../AuditLog/auditLog.entity";
 
 const router = Router();
 
@@ -46,6 +48,9 @@ router.use("/auth", authRoutes);
 
 // Mount data export routes
 router.use("/export", dataExportRoutes);
+
+// Mount audit log routes
+router.use("/audit", auditLogRoutes);
 
 // Public webhook endpoint for Stellar funding notifications
 router.post("/webhook/stellar/funding", async (req: Request, res: Response) => {
@@ -169,6 +174,20 @@ router.post("/signup", async (req: Request, res: Response) => {
 
     // Save user
     const savedUser = await userRepository.save(user);
+
+    // Log user creation
+    await auditLogService.log({
+      userId: savedUser.id,
+      action: AuditAction.USER_CREATED,
+      severity: AuditSeverity.INFO,
+      ipAddress:
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        (req.headers["x-real-ip"] as string) ||
+        req.socket.remoteAddress ||
+        "unknown",
+      userAgent: req.headers["user-agent"],
+      metadata: { username: name, address },
+    });
 
     //  Return success
     return res.status(201).json({
@@ -384,34 +403,39 @@ router.get(
 );
 
 // GET /admin/stats - Internal admin route for CPU and memory usage
-router.get("/admin/stats", authenticateToken, requireAdmin, (req: Request, res: Response) => {
-  const memUsage = process.memoryUsage();
-  const cpuUsage = process.cpuUsage();
+router.get(
+  "/admin/stats",
+  authenticateToken,
+  requireAdmin,
+  (req: Request, res: Response) => {
+    const memUsage = process.memoryUsage();
+    const cpuUsage = process.cpuUsage();
 
-  res.json({
-    success: true,
-    timestamp: new Date().toISOString(),
-    memory: {
-      rss: `${(memUsage.rss / 1024 / 1024).toFixed(2)} MB`,
-      heapTotal: `${(memUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`,
-      heapUsed: `${(memUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`,
-      external: `${(memUsage.external / 1024 / 1024).toFixed(2)} MB`,
-    },
-    cpu: {
-      user: `${(cpuUsage.user / 1000).toFixed(2)} ms`,
-      system: `${(cpuUsage.system / 1000).toFixed(2)} ms`,
-    },
-    system: {
-      totalMemory: `${(os.totalmem() / 1024 / 1024 / 1024).toFixed(2)} GB`,
-      freeMemory: `${(os.freemem() / 1024 / 1024 / 1024).toFixed(2)} GB`,
-      uptime: `${(os.uptime() / 3600).toFixed(2)} hours`,
-      loadAverage: os.loadavg(),
-    },
-    process: {
-      uptime: `${(process.uptime() / 60).toFixed(2)} minutes`,
-      pid: process.pid,
-    },
-  });
-});
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      memory: {
+        rss: `${(memUsage.rss / 1024 / 1024).toFixed(2)} MB`,
+        heapTotal: `${(memUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`,
+        heapUsed: `${(memUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`,
+        external: `${(memUsage.external / 1024 / 1024).toFixed(2)} MB`,
+      },
+      cpu: {
+        user: `${(cpuUsage.user / 1000).toFixed(2)} ms`,
+        system: `${(cpuUsage.system / 1000).toFixed(2)} ms`,
+      },
+      system: {
+        totalMemory: `${(os.totalmem() / 1024 / 1024 / 1024).toFixed(2)} GB`,
+        freeMemory: `${(os.freemem() / 1024 / 1024 / 1024).toFixed(2)} GB`,
+        uptime: `${(os.uptime() / 3600).toFixed(2)} hours`,
+        loadAverage: os.loadavg(),
+      },
+      process: {
+        uptime: `${(process.uptime() / 60).toFixed(2)} minutes`,
+        pid: process.pid,
+      },
+    });
+  }
+);
 
 export default router;
