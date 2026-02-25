@@ -1,7 +1,11 @@
 node_modules
 dist
 .env
+.env.local
 src/Auth/accounts.json
 logs/
-*.log
-.*.json
+
+.agent/
+.agents/
+COMMIT.md
+issue.md

@@ -19,14 +19,12 @@ function redactSensitiveData(obj: unknown): unknown {
 
   if (typeof obj === "object") {
     const redacted: Record<string, unknown> = {};
-    for (const key in obj) {
+    for (const key in obj as Record<string, unknown>) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
         if (SENSITIVE_FIELDS.includes(key)) {
           redacted[key] = "[REDACTED]";
         } else {
-          redacted[key] = redactSensitiveData(
-            (obj as Record<string, unknown>)[key]
-          );
+          redacted[key] = redactSensitiveData((obj as Record<string, unknown>)[key]);
         }
       }
     }
@@ -188,17 +186,8 @@ errorRotateFileTransport.on("logRemoved", (removedFilename: string) => {
 });
 
 // Helper functions for common log patterns
-export const logError = (
-  message: string,
-  error?: Error | unknown,
-  meta?: Record<string, unknown>
-) => {
-  const errorObj = error instanceof Error ? error : new Error(String(error));
-  logger.error(message, {
-    error: errorObj.message,
-    stack: errorObj.stack,
-    ...meta,
-  });
+export const logError = (message: string, error?: Error | unknown, meta?: Record<string, unknown>) => {
+  logger.error(message, { error: error?.message || error, stack: error?.stack, ...meta });
 };
 
 export const logInfo = (message: string, meta?: Record<string, unknown>) => {
