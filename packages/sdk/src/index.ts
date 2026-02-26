@@ -7,5 +7,6 @@ export * from "./agentClient";
 export * from "./soroban";
 export * from "./events";
 export * from "./horizonClient";
+export * from "./schemaValidator";
 export * from "./sequenceManager";
 export * from "./stellarSequenceHelper";
