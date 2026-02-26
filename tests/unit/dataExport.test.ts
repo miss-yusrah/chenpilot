@@ -21,7 +21,7 @@ describe("DataExportService", () => {
     };
 
     mockContactRepository = {
-      find: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
     };
 
     mockRefreshTokenRepository = {

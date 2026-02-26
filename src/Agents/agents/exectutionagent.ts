@@ -6,14 +6,19 @@ import { responseAgent } from "./responseagent";
 import logger from "../../config/logger";
 import { withTimeout, TimeoutError } from "../../utils/timeout";
 import config from "../../config/config";
+import { randomUUID } from "crypto";
 export class ExecutionAgent {
   async run(
     plan: WorkflowPlan,
     userId: string,
     input: string,
+    traceId?: string | number,
     timeoutMs?: number
   ) {
-    const timeout = timeoutMs || config.agent.timeouts.agentExecution;
+    const timeout =
+      (typeof traceId === "number" ? traceId : timeoutMs) ||
+      config.agent.timeouts.agentExecution;
+    const actualTraceId = typeof traceId === "string" ? traceId : randomUUID();
     const startTime = Date.now();
 
     logger.info("Starting agent execution", {
@@ -24,7 +29,14 @@ export class ExecutionAgent {
 
     try {
       return await withTimeout(
-        this.executeWorkflow(plan, userId, input, startTime, timeout),
+        this.executeWorkflow(
+          plan,
+          userId,
+          input,
+          startTime,
+          timeout,
+          actualTraceId
+        ),
         {
           timeoutMs: timeout,
           operation: `Agent execution for user ${userId}`,
@@ -54,7 +66,8 @@ export class ExecutionAgent {
     userId: string,
     input: string,
     startTime: number,
-    totalTimeout: number
+    totalTimeout: number,
+    traceId: string
   ) {
     const results: ToolResult[] = [];
 
@@ -117,12 +130,12 @@ export class ExecutionAgent {
     }));
 
     memoryStore.add(userId, `LLM: ${JSON.stringify(summarizedResults)}`);
-    const res: { response: string } = await responseAgent.format(
+    const res = (await responseAgent.format(
       results,
       userId,
       input,
       traceId
-    );
+    )) as { response: string };
     logger.info("Workflow execution completed", {
       userId,
       hasResponse: !!res?.response,

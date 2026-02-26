@@ -216,7 +216,9 @@ function validateSwapIntent(
 function validateLiquidityIntent(
   payload: Record<string, unknown>,
   action: string,
-  errors: DeFiValidationError[]
+  errors: DeFiValidationError[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _warnings: string[]
 ): void {
   if (!payload.tokenA || typeof payload.tokenA !== "string") {
     errors.push({

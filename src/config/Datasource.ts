@@ -12,7 +12,7 @@ const isDev = config.env === "development";
 const dbOptions: DataSourceOptions = {
   type: "postgres",
   host: config.db.postgres.host,
-  port: Number(config.db.postgres.port), // Ensure port is a number
+  port: Number(config.db.postgres.port),
   username: config.db.postgres.username,
   password: config.db.postgres.password || undefined,
   database: config.db.postgres.database,
@@ -28,10 +28,6 @@ const dbOptions: DataSourceOptions = {
   migrations: [isDev ? "src/migrations/**/*.ts" : "dist/migrations/**/*.js"],
   subscribers: [],
 };
-
-// if (config.db.postgres.password) {
-//   dbOptions.password = config.db.postgres.password;
-// }
 
 const AppDataSource = new DataSource(dbOptions);
 

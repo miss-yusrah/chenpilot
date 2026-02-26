@@ -53,7 +53,7 @@ export class IntentAgent {
       }
 
       const promptVersion = await promptGenerator.generateIntentPrompt();
-      promptVersionId = (promptVersion as { id: string }).id;
+      promptVersionId = (promptVersion as Record<string, unknown>).id as string;
 
       const prompt = (
         typeof promptVersion === "string" ? promptVersion : promptVersion
@@ -61,9 +61,18 @@ export class IntentAgent {
         .replace("{{USER_INPUT}}", input)
         .replace("{{USER_ID}}", userId);
 
-      const parsed = await agentLLM.callLLM(userId, prompt, "", true, traceId);
-      const steps: WorkflowStep[] = Array.isArray(parsed?.workflow)
-        ? parsed.workflow
+      const parsed = await agentLLM.callLLM(
+        userId,
+        prompt,
+        "",
+        true,
+        undefined,
+        traceId
+      );
+      const steps: WorkflowStep[] = Array.isArray(
+        (parsed as Record<string, unknown>)?.workflow
+      )
+        ? ((parsed as Record<string, unknown>).workflow as WorkflowStep[])
         : [];
 
       if (promptVersionId) {

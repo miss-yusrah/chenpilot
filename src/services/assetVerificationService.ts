@@ -41,9 +41,8 @@ export class AssetVerificationService {
       // 3. Verify Asset is listed in TOML
       const verifiedAssets = toml.CURRENCIES || [];
       const isListed = verifiedAssets.some(
-        (curr: unknown) =>
-          (curr as { code?: string; issuer?: string }).code === assetCode &&
-          (curr as { code?: string; issuer?: string }).issuer === issuerAddress
+        (curr: Record<string, unknown>) =>
+          curr.code === assetCode && curr.issuer === issuerAddress
       );
 
       if (isListed) {

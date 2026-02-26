@@ -1,8 +1,8 @@
 declare const process: { cwd: () => string };
 
 import { MemoryStore } from "../../src/Agents/memory/memory";
-import fs from "fs";
-import path from "path";
+import * as fs from "fs";
+import * as path from "path";
 
 describe("MemoryStore", () => {
   let storageDirectory: string;
