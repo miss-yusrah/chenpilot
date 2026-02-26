@@ -44,7 +44,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
  * Applied to AI queries and wallet-related operations.
  * Limit: 20 requests per minute per IP.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 const sensitiveLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
   limit: 20,
@@ -185,6 +185,7 @@ app.post("/query", sensitiveLimiter, async (req, res, next) => {
 });
 
 app.use("/api", routes);
+app.use("/api/prompts", promptRoutes);
 
 app.use(ErrorHandler);
 
