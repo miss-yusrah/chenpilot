@@ -60,13 +60,13 @@ export const mockStellarSdk: Record<string, any> = {
     PUBLIC: "Public Global Stellar Network ; September 2015",
   },
   BASE_FEE: "100",
-  Account: jest.fn().mockImplementation((...args: any[]) => ({
-    accountId: args[0],
-    sequence: args[1],
+  Account: jest.fn().mockImplementation((accountId: any, sequence: any) => ({
+    accountId,
+    sequence,
   })),
-  Contract: jest.fn().mockImplementation((...args: any[]) => ({
-    contractId: args[0],
-    call: jest.fn((...callArgs: any[]) => ({
+  Contract: jest.fn().mockImplementation((contractId: any) => ({
+    contractId,
+    call: jest.fn((method: string, ...args: any[]) => ({
       type: "invoke",
       contractId: args[0],
       method: callArgs[0],
