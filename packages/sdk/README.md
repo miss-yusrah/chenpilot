@@ -1,14 +1,14 @@
 # Chen Pilot SDK Core
 
-Core SDK for Chen Pilot cross-chain operations with support for Soroban contract interactions, event subscriptions, recovery mechanisms, and automatic fee bumping.
+Core SDK for Chen Pilot cross-chain operations with Stellar/Soroban support.
 
 ## Features
 
-- **Fee Bumping**: Automatic resource limit adjustment for Soroban transactions
+- **Network Status Checks**: Monitor Stellar network health, latency, and protocol version
 - **Event Subscriptions**: Subscribe to Soroban contract events
-- **Recovery Engine**: Handle failed cross-chain transactions
+- **Recovery Engine**: Handle cross-chain transaction failures and retries
 - **Plan Verification**: Verify and validate transaction plans
-- **TypeScript**: Full TypeScript support with comprehensive type definitions
+- **TypeScript Support**: Full type definitions included
 
 ## Installation
 
@@ -18,32 +18,21 @@ npm install @chen-pilot/sdk-core
 
 ## Quick Start
 
-### Fee Bumping
+### Network Status
 
-Automatically adjust resource limits for Soroban transactions:
+Check Stellar network health and status:
 
 ```typescript
-import { FeeBumpingEngine } from "@chen-pilot/sdk-core";
+import { getNetworkStatus } from "@chen-pilot/sdk-core";
 
-const engine = new FeeBumpingEngine({
-  strategy: "moderate",
-  maxAttempts: 3,
-});
+const status = await getNetworkStatus({ network: "testnet" });
 
-const result = await engine.bumpAndRetry(async (limits) => {
-  return await sorobanClient.invokeContract({
-    contractId: "CXXX...",
-    method: "transfer",
-    args: [...],
-    resourceLimits: limits,
-  });
-});
-
-if (result.success) {
-  console.log("Transaction hash:", result.result.hash);
-  console.log("Final fee:", result.estimatedFee, "stroops");
-}
+console.log("Network healthy:", status.health.isHealthy);
+console.log("Latest ledger:", status.health.latestLedger);
+console.log("Protocol version:", status.protocol.version);
 ```
+
+See [NETWORK_STATUS.md](./NETWORK_STATUS.md) for complete documentation.
 
 ### Event Subscriptions
 
@@ -52,28 +41,24 @@ Subscribe to Soroban contract events:
 ```typescript
 import { subscribeToEvents } from "@chen-pilot/sdk-core";
 
-const subscription = await subscribeToEvents(
-  {
-    network: "testnet",
-    contractIds: ["CXXX..."],
-    topicFilter: ["transfer"],
-    pollingIntervalMs: 5000,
-  },
-  async (event) => {
-    console.log("Event received:", event);
-  },
-  (error) => {
-    console.error("Subscription error:", error);
-  }
-);
+const subscription = await subscribeToEvents({
+  network: "testnet",
+  contractIds: ["CABC1234567890"],
+  topicFilter: ["transfer"],
+});
 
-// Later: stop subscription
-await subscription.unsubscribe();
+subscription.on("event", (event) => {
+  console.log("Event received:", event);
+});
+
+subscription.on("error", (error) => {
+  console.error("Subscription error:", error);
+});
 ```
 
 ### Recovery Engine
 
-Handle failed cross-chain transactions:
+Handle cross-chain transaction failures:
 
 ```typescript
 import { RecoveryEngine } from "@chen-pilot/sdk-core";
@@ -83,193 +68,81 @@ const engine = new RecoveryEngine({
   retryDelayMs: 5000,
 });
 
-const result = await engine.recover({
-  lockTxId: "btc_tx_123",
-  amount: "1000000",
-  fromChain: ChainId.BITCOIN,
-  toChain: ChainId.STELLAR,
-  destinationAddress: "GXXX...",
-});
-
-console.log("Recovery action:", result.actionTaken);
-```
-
-## Documentation
-
-- [Fee Bumping Guide](./docs/FEE_BUMPING.md) - Comprehensive guide to automatic fee bumping
-- [API Reference](./docs/API.md) - Complete API documentation
-- [Examples](./examples/) - Usage examples
-
-## API Overview
-
-### Fee Bumping
-
-```typescript
-// Create engine
-const engine = new FeeBumpingEngine({
-  strategy: "conservative" | "moderate" | "aggressive",
-  maxAttempts: number,
-  initialLimits: ResourceLimits,
-  onBump: (info) => void,
-});
-
-// Execute with automatic retries
-const result = await engine.bumpAndRetry(txExecutor, initialLimits?);
-
-// Manual adjustment calculation
-const adjusted = engine.calculateAdjustment(error, currentLimits);
-
-// Fee estimation
-const fee = engine.estimateFee(limits);
-
-// Get defaults
-const defaults = FeeBumpingEngine.getDefaultLimits();
-```
-
-### Event Subscriptions
-
-```typescript
-const subscription = await subscribeToEvents(
-  config: EventSubscriptionConfig,
-  onEvent: EventHandler,
-  onError?: ErrorHandler
-);
-
-await subscription.unsubscribe();
-const isActive = subscription.isActive();
-const lastLedger = subscription.getLastLedger();
-```
-
-### Recovery Engine
-
-```typescript
-const engine = new RecoveryEngine(options);
 const result = await engine.recover(context);
 ```
 
-## Types
+## API Documentation
 
-```typescript
-// Resource Limits
-interface ResourceLimits {
-  cpuInstructions: number;
-  readBytes: number;
-  writeBytes: number;
-  readLedgerEntries: number;
-  writeLedgerEntries: number;
-  txSizeByte: number;
-}
+### Network Status
 
-// Fee Bump Result
-interface FeeBumpResult<T> {
-  success: boolean;
-  result?: T;
-  error?: string;
-  finalLimits: ResourceLimits;
-  attempts: Array<{
-    attempt: number;
-    limits: ResourceLimits;
-    error?: string;
-  }>;
-  estimatedFee: number;
-}
+- `checkNetworkHealth(config)` - Check if network is reachable
+- `checkLedgerLatency(config)` - Check ledger latency
+- `getProtocolVersion(config)` - Get protocol version
+- `getNetworkStatus(config)` - Get complete network status
 
-// Event Subscription
-interface SorobanEvent {
-  transactionHash: string;
-  contractId: string;
-  topics: string[];
-  data: unknown;
-  ledger: number;
-  createdAt: number;
-}
-```
+See [NETWORK_STATUS.md](./NETWORK_STATUS.md) for details.
+
+### Event Subscriptions
+
+- `subscribeToEvents(config)` - Subscribe to contract events
+- `SorobanEventSubscription` - Event subscription class
+
+### Recovery
+
+- `RecoveryEngine` - Cross-chain recovery engine
+- `RecoveryAction` - Recovery action types
+- `RecoveryContext` - Recovery context interface
 
 ## Examples
 
-### Basic Fee Bumping
+Check the `examples/` directory for complete usage examples:
 
-```typescript
-import { FeeBumpingEngine } from "@chen-pilot/sdk-core";
-
-const engine = new FeeBumpingEngine();
-
-const result = await engine.bumpAndRetry(async (limits) => {
-  return await invokeContract({ ...params, resourceLimits: limits });
-});
-```
-
-### Custom Strategy
-
-```typescript
-const engine = new FeeBumpingEngine({
-  strategy: "aggressive",
-  maxAttempts: 5,
-  onBump: (info) => {
-    console.log(`Bumping ${info.error.resource}`);
-  },
-});
-```
-
-### Fee Estimation
-
-```typescript
-const engine = new FeeBumpingEngine();
-const limits = FeeBumpingEngine.getDefaultLimits();
-const fee = engine.estimateFee(limits);
-
-console.log(`Estimated fee: ${fee / 10_000_000} XLM`);
-```
+- `networkStatus.example.ts` - Network status monitoring
+- More examples coming soon
 
 ## Testing
 
+Run the test suite:
+
 ```bash
-# Run tests
 npm test
+```
 
-# Run tests with coverage
-npx jest --coverage
+Run with coverage:
 
-# Run specific test file
-npm test -- feeBumping.test.ts
+```bash
+npm run test:coverage
 ```
 
 ## Development
 
+Build the SDK:
+
 ```bash
-# Install dependencies
-npm install
-
-# Build
 npm run build
-
-# Run tests
-npm test
-
-# Type check
-npx tsc --noEmit
 ```
 
-## Contributing
+## TypeScript
 
-Contributions are welcome! Please read our [Contributing Guide](../../CONTRIBUTING.md) for details.
+Full TypeScript support with comprehensive type definitions:
+
+```typescript
+import type {
+  NetworkStatus,
+  NetworkHealth,
+  LedgerLatency,
+  ProtocolVersion,
+  SorobanEvent,
+  EventSubscription,
+  RecoveryContext,
+  RecoveryResult,
+} from "@chen-pilot/sdk-core";
+```
 
 ## License
 
 ISC
 
-## Support
+## Contributing
 
-- GitHub Issues: [github.com/gear5labs/chenpilot/issues](https://github.com/gear5labs/chenpilot/issues)
-- Documentation: [Full Documentation](./docs/)
-
-## Changelog
-
-### v0.1.0
-
-- Initial release
-- Fee bumping engine with automatic resource limit adjustment
-- Event subscription support
-- Recovery engine for failed transactions
-- Plan verification utilities
-- Comprehensive TypeScript types
+See [CONTRIBUTING.md](../../CONTRIBUTING.md) for contribution guidelines.
