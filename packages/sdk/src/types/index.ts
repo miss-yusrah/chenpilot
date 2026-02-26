@@ -70,6 +70,48 @@ export interface RecoveryEngineOptions {
   refundHandler?: RefundHandler;
 }
 
+// ─── Soroban execution logs ──────────────────────────────────────────────────
+
+export type SorobanNetwork = "testnet" | "mainnet";
+
+export interface GetExecutionLogsParams {
+  /** Transaction hash returned from a Soroban contract call. */
+  txHash: string;
+  network: SorobanNetwork;
+  /** Override the default RPC URL for the selected network. */
+  rpcUrl?: string;
+}
+
+/** A single contract event emitted during transaction execution. */
+export interface ExecutionLogEntry {
+  /** Position of the event within the transaction result. */
+  index: number;
+  /** Bech32m contract address, or null for system events. */
+  contractId: string | null;
+  /** "contract" | "system" | "diagnostic" */
+  type: string;
+  /** Decoded topic values. */
+  topics: unknown[];
+  /** Decoded data value. */
+  data: unknown;
+}
+
+/** Formatted execution log for a Soroban transaction. */
+export interface ExecutionLog {
+  txHash: string;
+  status: "SUCCESS" | "FAILED" | "NOT_FOUND";
+  /** Ledger sequence number the transaction was included in, if known. */
+  ledger: number | null;
+  /** Unix timestamp (seconds) of ledger close, if known. */
+  createdAt: number | null;
+  /** Decoded return value of the contract call, if available. */
+  returnValue: unknown | null;
+  /** Contract events emitted during execution. */
+  events: ExecutionLogEntry[];
+  /** Human-readable error description for FAILED or NOT_FOUND transactions. */
+  errorMessage: string | null;
+}
+
 // ─── Soroban event subscription types ────────────────────────────────────────
 
 /** Configuration for subscribing to Soroban contract events. */
@@ -120,152 +162,60 @@ export interface EventSubscription {
   getLastLedger(): number | null;
 }
 
-// ─── Soroban Fee Bumping types ───────────────────────────────────────────────
+// ─── Network Status types ────────────────────────────────────────────────────
 
-/** Resource limits for Soroban transactions */
-export interface ResourceLimits {
-  /** Maximum CPU instructions allowed */
-  cpuInstructions: number;
-  /** Maximum bytes that can be read */
-  readBytes: number;
-  /** Maximum bytes that can be written */
-  writeBytes: number;
-  /** Maximum number of ledger entries that can be read */
-  readLedgerEntries: number;
-  /** Maximum number of ledger entries that can be written */
-  writeLedgerEntries: number;
-  /** Maximum transaction size in bytes */
-  txSizeByte: number;
+/** Configuration for network status checks. */
+export interface NetworkStatusConfig {
+  /** Network to check ("testnet" | "mainnet"). */
+  network: "testnet" | "mainnet";
+  /** Optional RPC URL override. */
+  rpcUrl?: string;
+  /** Optional Horizon URL override. */
+  horizonUrl?: string;
 }
 
-/** Strategy for fee bumping */
-export type FeeBumpStrategy = "conservative" | "moderate" | "aggressive";
-
-/** Configuration for fee bumping engine */
-export interface FeeBumpConfig {
-  /** Strategy to use for calculating new limits (default: moderate) */
-  strategy?: FeeBumpStrategy;
-  /** Maximum number of retry attempts (default: 3) */
-  maxAttempts?: number;
-  /** Initial resource limits to use (uses defaults if not provided) */
-  initialLimits?: ResourceLimits;
-  /** Callback invoked when limits are bumped */
-  onBump?: (info: FeeBumpInfo) => void;
-}
-
-/** Information about a fee bump adjustment */
-export interface FeeBumpInfo {
-  /** Current attempt number */
-  attempt: number;
-  /** Previous resource limits */
-  previousLimits: ResourceLimits;
-  /** New adjusted resource limits */
-  newLimits: ResourceLimits;
-  /** The resource error that triggered the bump */
-  error: TransactionResourceError;
-}
-
-/** Parsed resource error from transaction failure */
-export interface TransactionResourceError {
-  /** The resource that exceeded limits */
-  resource: keyof ResourceLimits;
-  /** The required amount */
-  required: number;
-  /** The current limit */
-  limit: number;
-  /** Original error message */
-  message: string;
-}
-
-/** Result of fee bumping operation */
-export interface FeeBumpResult<T> {
-  /** Whether the transaction succeeded */
-  success: boolean;
-  /** Transaction result if successful */
-  result?: T;
-  /** Error message if failed */
+/** Network health information. */
+export interface NetworkHealth {
+  /** Whether the network is reachable and responding. */
+  isHealthy: boolean;
+  /** Response time in milliseconds. */
+  responseTimeMs: number;
+  /** Latest ledger sequence. */
+  latestLedger: number;
+  /** Error message if unhealthy. */
   error?: string;
-  /** Final resource limits used */
-  finalLimits: ResourceLimits;
-  /** History of all attempts */
-  attempts: Array<{
-    attempt: number;
-    limits: ResourceLimits;
-    error?: string;
-  }>;
-  /** Estimated fee in stroops */
-  estimatedFee: number;
 }
 
-/** Soroban network type */
-export type SorobanNetwork = "testnet" | "mainnet";
-
-// ─── Multi-sig Account Configuration types ───────────────────────────────────
-
-/** Threshold category for multi-sig operations */
-export enum ThresholdCategory {
-  /** Low threshold for basic operations */
-  LOW = "low",
-  /** Medium threshold for standard operations */
-  MEDIUM = "medium",
-  /** High threshold for critical operations */
-  HIGH = "high",
+/** Ledger latency information. */
+export interface LedgerLatency {
+  /** Current ledger sequence. */
+  currentLedger: number;
+  /** Time since last ledger close (seconds). */
+  timeSinceLastLedgerSec: number;
+  /** Average ledger close time (seconds). */
+  averageLedgerTimeSec: number;
+  /** Whether latency is within normal range. */
+  isNormal: boolean;
 }
 
-/** A signer with associated weight */
-export interface Signer {
-  /** Public key or address of the signer */
-  address: string;
-  /** Weight assigned to this signer (0-255) */
-  weight: number;
+/** Protocol version information. */
+export interface ProtocolVersion {
+  /** Current protocol version. */
+  version: number;
+  /** Core version string. */
+  coreVersion: string;
+  /** Network passphrase. */
+  networkPassphrase: string;
 }
 
-/** Threshold requirements for different operation categories */
-export interface ThresholdConfig {
-  /** Threshold for low-security operations (default: 0) */
-  low: number;
-  /** Threshold for medium-security operations (default: 0) */
-  medium: number;
-  /** Threshold for high-security operations (master weight) */
-  high: number;
-}
-
-/** Multi-signature account configuration */
-export interface MultiSigConfig {
-  /** Master account address */
-  masterAccount: string;
-  /** List of signers with their weights */
-  signers: Signer[];
-  /** Threshold requirements for operations */
-  thresholds: ThresholdConfig;
-}
-
-/** Validation result for multi-sig configuration */
-export interface MultiSigValidationResult {
-  /** Whether the configuration is valid */
-  valid: boolean;
-  /** List of validation errors */
-  errors: string[];
-  /** List of validation warnings */
-  warnings: string[];
-}
-
-/** Options for building multi-sig configuration */
-export interface MultiSigBuilderOptions {
-  /** Whether to validate configuration automatically (default: true) */
-  autoValidate?: boolean;
-  /** Whether to allow duplicate signers (default: false) */
-  allowDuplicates?: boolean;
-  /** Maximum number of signers allowed (default: 20) */
-  maxSigners?: number;
-}
-
-/** Result of multi-sig configuration build */
-export interface MultiSigBuildResult {
-  /** The built configuration */
-  config: MultiSigConfig;
-  /** Validation result */
-  validation: MultiSigValidationResult;
-  /** Estimated transaction fee in stroops */
-  estimatedFee?: number;
+/** Complete network status. */
+export interface NetworkStatus {
+  /** Network health information. */
+  health: NetworkHealth;
+  /** Ledger latency information. */
+  latency: LedgerLatency;
+  /** Protocol version information. */
+  protocol: ProtocolVersion;
+  /** Timestamp of the check. */
+  checkedAt: number;
 }
