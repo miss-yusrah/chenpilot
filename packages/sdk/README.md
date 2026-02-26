@@ -4,6 +4,7 @@ Core SDK for Chen Pilot cross-chain operations with support for Soroban contract
 
 ## Features
 
+- **Multi-Sig Configuration**: High-level builder for complex multi-signature account setup
 - **Fee Bumping**: Automatic resource limit adjustment for Soroban transactions
 - **Event Subscriptions**: Subscribe to Soroban contract events
 - **Recovery Engine**: Handle failed cross-chain transactions
@@ -17,6 +18,35 @@ npm install @chen-pilot/sdk-core
 ```
 
 ## Quick Start
+
+### Multi-Sig Configuration
+
+Set up complex multi-signature accounts with weight and threshold requirements:
+
+```typescript
+import { MultiSigBuilder, ThresholdCategory } from "@chen-pilot/sdk-core";
+
+const builder = new MultiSigBuilder("GMASTER_ACCOUNT_ADDRESS")
+  .addSigner("GSIGNER1_ADDRESS", 10)
+  .addSigner("GSIGNER2_ADDRESS", 20)
+  .addSigner("GSIGNER3_ADDRESS", 30)
+  .setThreshold(ThresholdCategory.MEDIUM, 30)
+  .setThreshold(ThresholdCategory.HIGH, 50);
+
+const result = builder.build();
+
+if (result.validation.valid) {
+  console.log("Configuration:", result.config);
+  console.log("Estimated fee:", result.estimatedFee, "stroops");
+}
+
+// Or use presets for common scenarios
+const preset = MultiSigBuilder.createPreset(
+  "2-of-3",
+  "GMASTER_ADDRESS",
+  ["GSIGNER1", "GSIGNER2", "GSIGNER3"]
+);
+```
 
 ### Fee Bumping
 
@@ -96,11 +126,49 @@ console.log("Recovery action:", result.actionTaken);
 
 ## Documentation
 
+- [Multi-Sig Configuration Guide](./docs/MULTI_SIG.md) - Complete guide to multi-signature accounts
 - [Fee Bumping Guide](./docs/FEE_BUMPING.md) - Comprehensive guide to automatic fee bumping
 - [API Reference](./docs/API.md) - Complete API documentation
 - [Examples](./examples/) - Usage examples
 
 ## API Overview
+
+### Multi-Sig Configuration
+
+```typescript
+// Create builder
+const builder = new MultiSigBuilder(masterAccount, {
+  autoValidate: boolean,
+  allowDuplicates: boolean,
+  maxSigners: number,
+});
+
+// Add signers
+builder.addSigner(address, weight);
+builder.addSigners([{ address, weight }, ...]);
+builder.removeSigner(address);
+builder.updateSignerWeight(address, newWeight);
+
+// Set thresholds
+builder.setThreshold(ThresholdCategory.MEDIUM, value);
+builder.setThresholds({ low, medium, high });
+
+// Validate and build
+const validation = builder.validate();
+const result = builder.build();
+
+// Presets
+const preset = MultiSigBuilder.createPreset(
+  "2-of-3" | "3-of-5" | "majority" | "unanimous",
+  masterAccount,
+  signerAddresses
+);
+
+// Utility functions
+validateMultiSigConfig(config);
+calculateTotalWeight(config);
+canMeetThreshold(signers, config, threshold);
+```
 
 ### Fee Bumping
 
@@ -150,6 +218,36 @@ const result = await engine.recover(context);
 ## Types
 
 ```typescript
+// Multi-Sig Types
+interface MultiSigConfig {
+  masterAccount: string;
+  signers: Signer[];
+  thresholds: ThresholdConfig;
+}
+
+interface Signer {
+  address: string;
+  weight: number; // 0-255
+}
+
+interface ThresholdConfig {
+  low: number;
+  medium: number;
+  high: number;
+}
+
+enum ThresholdCategory {
+  LOW = "low",
+  MEDIUM = "medium",
+  HIGH = "high",
+}
+
+interface MultiSigBuildResult {
+  config: MultiSigConfig;
+  validation: MultiSigValidationResult;
+  estimatedFee?: number;
+}
+
 // Resource Limits
 interface ResourceLimits {
   cpuInstructions: number;
@@ -186,6 +284,26 @@ interface SorobanEvent {
 ```
 
 ## Examples
+
+### Multi-Sig Configuration
+
+```typescript
+import { MultiSigBuilder, ThresholdCategory } from "@chen-pilot/sdk-core";
+
+// Weighted multi-sig for corporate treasury
+const builder = new MultiSigBuilder("GTREASURY_MASTER")
+  .addSigner("GTREASURER", 40)
+  .addSigner("GFINANCE1", 20)
+  .addSigner("GFINANCE2", 20)
+  .setThresholds({
+    low: 20,   // Any finance member
+    medium: 40, // Treasurer or both finance members
+    high: 60,   // Treasurer + at least one finance member
+  });
+
+const result = builder.build();
+console.log("Total weight:", calculateTotalWeight(result.config));
+```
 
 ### Basic Fee Bumping
 
